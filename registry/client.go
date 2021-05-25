@@ -179,7 +179,8 @@ func (c *Client) Repositories(useCache bool) map[string][]string {
 	linkRegexp := regexp.MustCompile("^<(.*?)>;.*$")
 	scope := "registry:catalog:*"
 	uri := "/v2/_catalog"
-	c.repos = map[string][]string{}
+
+	repos := map[string][]string{}
 	for {
 		data, resp := c.callRegistry(uri, scope, "manifest.v2")
 		if data == "" {
@@ -194,7 +195,8 @@ func (c *Client) Repositories(useCache bool) map[string][]string {
 				namespace = f[0]
 				repo = f[1]
 			}
-			c.repos[namespace] = append(c.repos[namespace], repo)
+			repos[namespace] = append(repos[namespace], repo)
+			c.repos[namespace] = repos[namespace]
 		}
 
 		// pagination
@@ -208,6 +210,14 @@ func (c *Client) Repositories(useCache bool) map[string][]string {
 			break
 		}
 	}
+
+	// Remove namespaces that are no longer in the registry
+	for namespace := range c.repos {
+		if _, ok := repos[namespace]; !ok {
+			delete(c.repos, namespace)
+		}
+	}
+
 	return c.repos
 }
 
